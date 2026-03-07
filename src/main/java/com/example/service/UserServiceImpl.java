@@ -10,31 +10,49 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import com.example.event.UserEvent;
+import com.example.kafka.UserEventProducer;
+
+import com.example.event.EventType;
+
+
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserRepository repository;
+    private final UserEventProducer producer;
 
-    public UserServiceImpl(UserRepository repository) {
+    public UserServiceImpl(UserRepository repository,
+                           UserEventProducer producer) {
         this.repository = repository;
+        this.producer = producer;
     }
-
 
     @Override
     public UserResponse create(UserRequest request) {
+
         User user = UserMapper.toEntity(request);
-        return UserMapper.toResponse(repository.save(user));
+        User savedUser = repository.save(user);
+
+        producer.sendEvent(
+                new UserEvent(savedUser.getEmail(), EventType.USER_CREATED)
+        );
+
+        return UserMapper.toResponse(savedUser);
     }
 
     @Override
     public UserResponse getById(Long id) {
+
         User user = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
         return UserMapper.toResponse(user);
     }
 
     @Override
     public List<UserResponse> getAll() {
+
         return repository.findAll()
                 .stream()
                 .map(UserMapper::toResponse)
@@ -43,6 +61,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse update(Long id, UserRequest request) {
+
         User user = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -55,9 +74,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found");
-        }
-        repository.deleteById(id);
+
+        User user = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        repository.delete(user);
+
+        producer.sendEvent(
+                new UserEvent(user.getEmail(), EventType.USER_DELETED)
+        );
     }
 }

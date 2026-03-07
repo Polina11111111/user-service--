@@ -10,7 +10,8 @@ public class UserResponse {
     private int age;
     private LocalDateTime createdAt;
 
-    public UserResponse() {}
+    public UserResponse() {
+    }
 
     public Long getId() {
         return id;
