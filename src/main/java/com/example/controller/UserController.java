@@ -3,13 +3,18 @@ package com.example.controller;
 import com.example.dto.UserRequest;
 import com.example.dto.UserResponse;
 import com.example.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
-        import java.util.List;
+import java.util.List;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping("/users")
+@Tag(name = "User API", description = "Управление пользователями")
 public class UserController {
 
     private final UserService service;
@@ -19,28 +24,33 @@ public class UserController {
     }
 
     @PostMapping
+    @Operation(summary = "Создать пользователя")
     public UserResponse create(@RequestBody @Valid UserRequest request) {
-        return service.create(request);
+        return addLinks(service.create(request));
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Получить по ID")
     public UserResponse get(@PathVariable Long id) {
-        return service.getById(id);
+        return addLinks(service.getById(id));
     }
 
     @GetMapping
+    @Operation(summary = "Все пользователи")
     public List<UserResponse> getAll() {
-        return service.getAll();
-    }
-
-    @PutMapping("/{id}")
-    public UserResponse update(@PathVariable Long id,
-                               @RequestBody @Valid UserRequest request) {
-        return service.update(id, request);
+        return service.getAll().stream().map(this::addLinks).toList();
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Удалить пользователя")
     public void delete(@PathVariable Long id) {
         service.delete(id);
+    }
+    private UserResponse addLinks(UserResponse response) {
+        response.add(linkTo(methodOn(UserController.class).get(response.getId())).withSelfRel());
+        response.add(linkTo(UserController.class).slash(response.getId()).withRel("delete"));
+        response.add(linkTo(methodOn(UserController.class).getAll()).withRel("all-users"));
+
+        return response;
     }
 }
