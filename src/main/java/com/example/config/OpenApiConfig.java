@@ -16,4 +16,5 @@ public class OpenApiConfig {
                         .version("1.0")
                         .description("Документация микросервиса пользователей с поддержкой HATEOAS"));
     }
+
 }
